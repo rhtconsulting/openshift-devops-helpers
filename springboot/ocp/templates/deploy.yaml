@@ -1,0 +1,168 @@
+apiVersion: v1
+kind: Template
+metadata:
+  creationTimestamp: null
+  name: ${APP}
+objects:
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: null
+    generation: 1
+    labels:
+      app: ${APP}
+    name: ${APP}
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      app: ${APP}
+      deploymentconfig: ${APP}
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          app: ${APP}
+          deploymentconfig: ${APP}
+      spec:
+        containers:
+        - env:
+          - name: http_proxy
+          - name: https_proxy
+          - name: HTTP_PROXY
+          - name: HTTPS_PROXY
+          - name: JAVA_OPTIONS
+            value: -Dspring.profiles.active=${STAGE}
+          - name: KUBERNETES_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: TZ
+            value: Asia/Singapore
+          image: docker-registry.default.svc:5000/${PROJ}/${APP}:deployed
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 8090
+              scheme: HTTP
+            initialDelaySeconds: 40
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 2
+          name: ${APP}
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 8090
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 2
+          name: ${APP}
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - name: vol-app-config
+            mountPath: /app/etc
+          - name: vol-logs
+            mountPath: /app/logs
+            subPath: ${PROJ}
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+          - name: vol-app-config
+            configMap:
+              name: ${APP}-config
+          - name: vol-logs
+            persistentVolumeClaim:
+              claimName: pvc-logs
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${APP}
+        from:
+          kind: ImageStreamTag
+          name: ${APP}:deployed
+          namespace: ${PROJ}
+      type: ImageChange
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+    labels:
+      app: ${APP}
+      expose: "true"
+    name: ${APP}
+  spec:
+    ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      app: ${APP}
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Route
+  metadata:
+    annotations:
+      haproxy.router.openshift.io/balance: "roundrobin"
+      haproxy.router.openshift.io/disable_cookies: "true"
+      haproxy.router.openshift.io/timeout: 3m
+      openshift.io/host.generated: "true"
+    creationTimestamp: null
+    labels:
+      app: ${APP}
+      expose: "true"
+      route: "public"
+    name: ${APP}
+  spec:
+    port:
+      targetPort: http
+    tls:
+      insecureEdgeTerminationPolicy: Redirect
+      termination: edge
+    to:
+      kind: Service
+      name: ${APP}
+      weight: 100
+    wildcardPolicy: None
+parameters:
+- description: Source project
+  name: SRC_PROJ
+- description: Target project
+  name: PROJ
+- description: Application name
+  name: APP
+- description: Release tag 
+  name: RELTAG
+- description: Pipeline stage (e.g. sit)
+  name: STAGE
+

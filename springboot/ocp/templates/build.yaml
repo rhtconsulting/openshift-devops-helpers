@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: default-app-template
+objects:
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: Jira
+    labels:
+      app: ${APP}
+    name: ${APP}
+  spec:
+    failedBuildsHistoryLimit: 5
+    nodeSelector: {}
+    output:
+      to:
+        kind: ImageStreamTag
+        name: ${APP}:${RELTAG}
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      binary: {}
+      type: Binary
+    strategy:
+      sourceStrategy:
+        from:
+          kind: DockerImage
+          name: registry.access.redhat.com/redhat-openjdk-18/openjdk18-openshift
+        env:
+        - name: MAVEN_ARGS
+          value: -e -DskipTests package
+        - name: MAVEN_MIRROR_URL
+          value: http://repository.internal:8081/artifactory/libs-release
+        - name: ARTIFACT_COPY_ARGS
+          value: '*.jar'
+      type: Source
+    successfulBuildsHistoryLimit: 5
+    triggers: []
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      openshift.io/generated-by: Jira
+    creationTimestamp: null
+    generation: 1
+    labels:
+      app: ${APP}
+    name: ${APP}
+  spec:
+    lookupPolicy:
+      local: false
+parameters:
+- description: Project name
+  name: PROJ
+  required: true
+- description: Application name
+  name: APP
+- description: Release tag
+  name: RELTAG

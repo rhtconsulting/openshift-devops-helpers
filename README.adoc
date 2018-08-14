@@ -1,0 +1,21 @@
+= openshift-devops-helpers
+Helper scripts to assist in the integration of OpenShift functions into a process tool of the user's choice.
+
+WARNING: These scripts were built for specific environments to make use of JIRA as a tool to formalize and control the release and promotion process in OpenShift. They are not yet in a form suitable for casual usage.
+
+== Requirements
+
+* These scripts must exist in the source code repository together with the existing code.
+* The build server used to assemble the application must have an appropriate version of the oc client installed.
+
+== Usage
+
+<tbd>
+
+== Contribution guidelines
+* Tests
+** There are currently no tests for these scripts. Contributions and suggestions(in that order ;) are welcome.
+
+== Acknowledgements
+* Yeo Boo Kian (@bookian) - the original author of these scripts.
+* Hoo Chuan Wu (chhoo@redhat.com) - creator of the JIRA workflows that use these scripts.
